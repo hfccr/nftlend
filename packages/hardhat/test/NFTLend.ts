@@ -42,6 +42,8 @@ describe("NFTLend", function () {
       expect(duration).to.equal(0n);
       expect(status).to.equal(0n);
       expect(startTime).to.equal(0n);
+      const tokenOwner = await sampleNft.ownerOf(1);
+      expect(tokenOwner).to.equal(nftLend.target);
     });
   });
 });
