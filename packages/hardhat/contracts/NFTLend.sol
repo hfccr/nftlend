@@ -42,9 +42,9 @@ contract NFTLend {
 
 	constructor() {
 		owner = msg.sender;
-		durationToTime[Duration.Small] = 1 minutes;
-		durationToTime[Duration.Medium] = 1 hours;
-		durationToTime[Duration.Large] = 1 days;
+		durationToTime[Duration.Small] = 0 minutes;
+		durationToTime[Duration.Medium] = 1 minutes;
+		durationToTime[Duration.Large] = 1 hours;
 	}
 
 	function createListing(
@@ -148,16 +148,34 @@ contract NFTLend {
 			listing.status == Status.DealMade,
 			"Listing must be in the DealMade state"
 		);
+		// Check if current timestamp is greater than the start timestamp + duration
+		console.log("block.timestamp: %s", block.timestamp);
+		console.log("listing.startTime: %s", listing.startTime);
+		console.log("listing.duration: %s", listing.duration);
+		console.log(
+			"listing.startTime + listing.duration: %s",
+			listing.startTime + listing.duration
+		);
 		require(
-			listing.duration < block.timestamp - listing.startTime,
+			block.timestamp >= listing.startTime + listing.duration,
 			"Loan duration not over"
 		);
+
 		listing.status = Status.DealLiquidated;
 		IERC721(listing.nftCollection).transferFrom(
 			address(this),
 			listing.lender,
 			listing.nftId
 		);
+	}
+
+	function getBlockTimestamp() public view returns (uint256) {
+		return block.timestamp;
+	}
+
+	function getLoanEndTime(uint256 _index) public view returns (uint256) {
+		Listing storage listing = listings[_index];
+		return listing.startTime + listing.duration;
 	}
 
 	function getAllListings() public view returns (Listing[] memory) {

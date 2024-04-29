@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     NFTLend: {
-      address: "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+      address: "0x851356ae760d987E095750cCeb3bC6014560891C",
       abi: [
         {
           inputs: [],
@@ -150,6 +150,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "getBlockTimestamp",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "address",
@@ -220,6 +233,25 @@ const deployedContracts = {
               internalType: "struct NFTLend.Listing[]",
               name: "",
               type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_index",
+              type: "uint256",
+            },
+          ],
+          name: "getLoanEndTime",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
