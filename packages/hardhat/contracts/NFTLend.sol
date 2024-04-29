@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract NFTLend {
 	address owner;
+	enum Duration {
+		Small,
+		Medium,
+		Large
+	}
 	enum Status {
 		Listed,
 		DealMade,
@@ -33,16 +38,20 @@ contract NFTLend {
 	mapping(address => Listing[]) public userListings;
 
 	Listing[] public listings;
+	mapping(Duration => uint256) public durationToTime;
 
 	constructor() {
 		owner = msg.sender;
+		durationToTime[Duration.Small] = 1 minutes;
+		durationToTime[Duration.Medium] = 1 hours;
+		durationToTime[Duration.Large] = 1 days;
 	}
 
 	function createListing(
 		address _nftCollection,
 		uint256 _nftId,
 		uint256 _fees,
-		uint256 _duration,
+		Duration duration,
 		uint256 _amount
 	) public {
 		// Prerequisite: Approve contract for transfer
@@ -62,7 +71,7 @@ contract NFTLend {
 				lender: address(0),
 				fees: _fees,
 				status: Status.Listed,
-				duration: _duration,
+				duration: durationToTime[duration],
 				amount: _amount,
 				startTime: 0,
 				listingTime: block.timestamp
@@ -140,7 +149,7 @@ contract NFTLend {
 			"Listing must be in the DealMade state"
 		);
 		require(
-			block.timestamp > listing.startTime + listing.duration,
+			listing.duration < block.timestamp - listing.startTime,
 			"Loan duration not over"
 		);
 		listing.status = Status.DealLiquidated;
@@ -163,5 +172,10 @@ contract NFTLend {
 
 	function getOwner() public view returns (address) {
 		return owner;
+	}
+
+	function getPendingDuration(uint256 _index) public view returns (uint256) {
+		Listing storage listing = listings[_index];
+		return listing.startTime + listing.duration - block.timestamp;
 	}
 }
