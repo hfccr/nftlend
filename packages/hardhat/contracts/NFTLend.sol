@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract NFTLend {
@@ -149,13 +148,6 @@ contract NFTLend {
 			"Listing must be in the DealMade state"
 		);
 		// Check if current timestamp is greater than the start timestamp + duration
-		console.log("block.timestamp: %s", block.timestamp);
-		console.log("listing.startTime: %s", listing.startTime);
-		console.log("listing.duration: %s", listing.duration);
-		console.log(
-			"listing.startTime + listing.duration: %s",
-			listing.startTime + listing.duration
-		);
 		require(
 			block.timestamp >= listing.startTime + listing.duration,
 			"Loan duration not over"
