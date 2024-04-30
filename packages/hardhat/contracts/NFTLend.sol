@@ -127,10 +127,6 @@ contract NFTLend {
 			msg.sender == listing.nftDepositor,
 			"Only the nft depositor can repay the loan"
 		);
-		require(
-			block.timestamp <= listing.startTime + listing.duration,
-			"Loan duration over"
-		);
 		listing.status = Status.Repaid;
 		// Transfer money to lender
 		payable(listing.lender).transfer(listing.amount + listing.fees);
