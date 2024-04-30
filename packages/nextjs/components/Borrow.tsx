@@ -1,5 +1,6 @@
 "use client";
 
+import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
@@ -11,6 +12,17 @@ export default function Borrow() {
     functionName: "balanceOf",
     args: [address],
   });
+  const { isSuccess: listingFetchSuccess, data: listings } = useScaffoldReadContract({
+    contractName: "NFTLend",
+    functionName: "getListingsForUser",
+    args: [address],
+  });
+  let nftsStaked = 0;
+  let totalBorrowed = 0n;
+  if (listingFetchSuccess) {
+    nftsStaked = listings ? listings?.length : 0;
+    listings?.forEach(listing => (totalBorrowed += listing.amount));
+  }
   const onMint = async () => {
     try {
       await writeSampleNftAsync({
@@ -49,15 +61,11 @@ export default function Borrow() {
         </div>
         <div className="stat">
           <div className="stat-title">NFTs Staked</div>
-          <div className="stat-value">0</div>
+          <div className="stat-value">{nftsStaked}</div>
         </div>
         <div className="stat">
           <div className="stat-title">Total Borrowed</div>
-          <div className="stat-value">0</div>
-        </div>
-        <div className="stat">
-          <div className="stat-title">Total Due</div>
-          <div className="stat-value">0</div>
+          <div className="stat-value">{formatEther(totalBorrowed)} ETH</div>
         </div>
       </div>
       <>Show minted NFTs</>
