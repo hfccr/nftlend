@@ -32,8 +32,7 @@ describe("NFTLend", function () {
   describe("Listing", function () {
     it("Should allow to create a listing", async function () {
       const [nftOwner] = await ethers.getSigners();
-      const sampleNftAddress = sampleNft.target;
-      await nftLend.connect(nftOwner).createListing(sampleNftAddress, 1, 10, 1, 100);
+      await nftLend.connect(nftOwner).createListing(sampleNft.target, 1, 10, 1, 100);
       const [id, nftDepositor, nftCollection, nftId, lender, amount, fees, duration, status, startTime] =
         await nftLend.listings(0);
       expect(id).to.equal(0);
@@ -89,6 +88,26 @@ describe("NFTLend", function () {
       await expect(nftLend.connect(lender).repay(0, { value: 110 })).to.be.revertedWith(
         "Listing must be in the DealMade state",
       );
+    });
+  });
+
+  describe("Seizure", function () {
+    it("Should allow lender to sieze an unpaid listing once duration is over", async function () {
+      const [nftOwner, lender] = await ethers.getSigners();
+      await nftLend.connect(nftOwner).createListing(sampleNft.target, 2, 10, 0, 100);
+      await nftLend.connect(lender).lend(1, { value: 100 });
+      await nftLend.connect(lender).siezeNft(1);
+      const [, , , nftId, _lender, , , , status] = await nftLend.listings(1);
+      expect(nftId).to.equal(2);
+      expect(_lender).to.equal(lender.address);
+      expect(status).to.equal(4);
+      const tokenOwner = await sampleNft.ownerOf(2);
+      expect(tokenOwner).to.equal(lender.address);
+    });
+
+    it("Should not allow to seize a listing that is already seized", async function () {
+      const [, lender] = await ethers.getSigners();
+      await expect(nftLend.connect(lender).siezeNft(1)).to.be.revertedWith("Listing must be in the DealMade state");
     });
   });
 });
