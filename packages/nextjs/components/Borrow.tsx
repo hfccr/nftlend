@@ -1,27 +1,68 @@
 "use client";
 
-import { formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useAccount } from "wagmi";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+
+interface StatusMap {
+  [key: string]: any;
+}
+
+const listingStatusMap: StatusMap = {
+  "0": "Listed",
+  "1": "Deal Made",
+  "2": "Repaid",
+  "3": "Cancelled",
+  "4": "Siezed",
+};
 
 export default function Borrow() {
   const { address } = useAccount();
   const { writeContractAsync: writeSampleNftAsync } = useScaffoldWriteContract("SampleNFT");
-  const { data: numberOfNftsOwned } = useScaffoldReadContract({
+  const { writeContractAsync: writeNftLendAsync } = useScaffoldWriteContract("NFTLend");
+  const { data: sampleNftDeployedContractData } = useDeployedContractInfo("SampleNFT");
+  const { data: nftLendDeployedContractData } = useDeployedContractInfo("NFTLend");
+  const { isSuccess: nftFetchSuccess, data: sampleNfts } = useScaffoldReadContract({
     contractName: "SampleNFT",
-    functionName: "balanceOf",
+    functionName: "getAllTokensOwnedByAddress",
     args: [address],
   });
-  const { isSuccess: listingFetchSuccess, data: listings } = useScaffoldReadContract({
+  const { data: approved } = useScaffoldReadContract({
+    contractName: "SampleNFT",
+    functionName: "isApprovedForAll",
+    args: [address, nftLendDeployedContractData?.address],
+  });
+  const { isSuccess: listingFetchSuccess, data: allListings } = useScaffoldReadContract({
     contractName: "NFTLend",
-    functionName: "getListingsForUser",
-    args: [address],
+    functionName: "getAllListings",
   });
+  let numberOfNftsOwned;
+  if (nftFetchSuccess) {
+    numberOfNftsOwned = sampleNfts?.length;
+  }
   let nftsStaked = 0;
   let totalBorrowed = 0n;
+  console.log("all listings are");
+  console.log(allListings);
+  const listings = Array.isArray(allListings) ? allListings.filter(listing => listing.nftDepositor === address) : [];
+  console.log("Listings are", listings);
+  interface TokenIdToListing {
+    [key: string]: any;
+  }
+  const nfts = sampleNfts ? sampleNfts?.map(nft => nft) : [];
+  const listingByTokenId: TokenIdToListing = {};
   if (listingFetchSuccess) {
     nftsStaked = listings ? listings?.length : 0;
-    listings?.forEach(listing => (totalBorrowed += listing.amount));
+    listings?.forEach(listing => {
+      const id = listing.nftId.toString();
+      totalBorrowed += listing.amount;
+      if (listing.nftCollection === sampleNftDeployedContractData?.address) {
+        if (nfts.indexOf(listing.nftId) < 0) {
+          nfts.push(listing.nftId);
+        }
+        listingByTokenId[id] = listing;
+      }
+    });
   }
   const onMint = async () => {
     try {
@@ -32,6 +73,41 @@ export default function Borrow() {
       console.log("Error in minting");
     }
   };
+
+  const onApprove = async () => {
+    try {
+      await writeSampleNftAsync({
+        functionName: "setApprovalForAll",
+        args: [nftLendDeployedContractData?.address, true],
+      });
+    } catch (e) {
+      console.log("Error in approving");
+    }
+  };
+
+  const onStake = async (tokenId: bigint) => {
+    try {
+      await writeNftLendAsync({
+        functionName: "createListing",
+        args: [sampleNftDeployedContractData?.address, tokenId, parseEther("0.5"), 0, parseEther("1")],
+      });
+    } catch (e) {
+      console.log("Error in approving");
+    }
+  };
+
+  const onRepay = async (tokenId: bigint, amount: bigint, fees: bigint) => {
+    try {
+      await writeNftLendAsync({
+        functionName: "repay",
+        args: [tokenId],
+        value: amount + fees,
+      });
+    } catch (e) {
+      console.log("Error in lending");
+    }
+  };
+
   return (
     <>
       <div className="stats shadow">
@@ -51,7 +127,7 @@ export default function Borrow() {
               ></path>
             </svg>
           </div>
-          <div className="stat-title">NFTs</div>
+          <div className="stat-title">NFTs Owned</div>
           <div className="stat-value">{numberOfNftsOwned?.toString()}</div>
           <div className="stat-actions">
             <button className="btn btn-sm btn-sm" onClick={onMint}>
@@ -68,8 +144,69 @@ export default function Borrow() {
           <div className="stat-value">{formatEther(totalBorrowed)} ETH</div>
         </div>
       </div>
-      <>Show minted NFTs</>
-      <>Show listed NFTs</>
+      {!approved && (
+        <div className="alert alert-warning">
+          Please approve the contract to interact with it
+          <button className="btn btn-secondary btn-sm" onClick={onApprove}>
+            Approve
+          </button>
+        </div>
+      )}
+      {approved && (
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>NFT ID</th>
+                <th>Status</th>
+                <th>Borrowed</th>
+                <th>Stake</th>
+                <th>Repay</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(nfts) &&
+                nfts.map(nft => {
+                  const listing = listingByTokenId[nft.toString()];
+                  console.log("ListingsByTokenId", listingByTokenId);
+                  return (
+                    <tr key={nft.toString()}>
+                      <td>{nft.toString()}</td>
+                      <td>{listing ? listingStatusMap[listing.status.toString()] : "Not Staked"}</td>
+                      <td>
+                        {listing
+                          ? (listing.status === 0 ? "Waiting For " : "") + formatEther(listing?.amount) + "ETH"
+                          : ""}
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-sm"
+                          disabled={listing !== undefined}
+                          onClick={() => {
+                            onStake(nft);
+                          }}
+                        >
+                          Stake
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-sm"
+                          disabled={!listing || listing.status.toString() !== "1"}
+                          onClick={() => {
+                            onRepay(listing.id, listing.amount, listing.fees);
+                          }}
+                        >
+                          Repay
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
