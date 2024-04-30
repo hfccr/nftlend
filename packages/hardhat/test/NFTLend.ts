@@ -81,6 +81,8 @@ describe("NFTLend", function () {
       expect(nftId).to.equal(1);
       expect(_lender).to.equal(lender.address);
       expect(status).to.equal(2);
+      const tokenOwner = await sampleNft.ownerOf(1);
+      expect(tokenOwner).to.equal(nftOwner.address);
     });
     it("Should not allow to repay a listing that is already repaid", async function () {
       const [, lender] = await ethers.getSigners();
