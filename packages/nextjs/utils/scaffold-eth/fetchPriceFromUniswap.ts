@@ -1,4 +1,4 @@
-import { ChainWithAttributes, getAlchemyHttpUrl } from "./networks";
+import { ChainWithAttributes, getInfuraHttpUrl } from "./networks";
 import { CurrencyAmount, Token } from "@uniswap/sdk-core";
 import { Pair, Route } from "@uniswap/v2-sdk";
 import { Address, createPublicClient, http, parseAbi } from "viem";
@@ -6,7 +6,7 @@ import { mainnet } from "viem/chains";
 
 const publicClient = createPublicClient({
   chain: mainnet,
-  transport: http(getAlchemyHttpUrl(mainnet.id)),
+  transport: http(getInfuraHttpUrl(mainnet.id)),
 });
 
 const ABI = parseAbi([
